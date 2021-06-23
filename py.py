@@ -17,18 +17,19 @@ def yyyymmdd(row):
     mon = '01' if pd.isna(row['month']) else month(row['month'])
     return str(row['year'])+'-'+mon+'-01'
 
-def reference(row):
+def reference(row, max_authors=99):
+    author = authors(row, max_authors)
     journal = clean(row['journal'])
     vol = row['volume']
     pp = row['pages']
     yyyy = row['year']
     arx_ident = clean(row['eprint'])
     if not pd.isna(vol) and not pd.isna(pp):
-        return journal + ' **' + str(vol) + '**, ' + str(pp) + ' (' + str(yyyy) + ')'
+        return author+", [{} **{}**, {} ({})](http://dx.doi.org/{})".format(journal, vol, pp, yyyy, clean(row['doi']))
     elif arx_ident != '':
-        return 'arXiv:'+arx_ident
+        return author+', '+arXiv(row)
     else:
-        return (journal.strip() + ' (' + str(yyyy) + ')').strip()
+        return author+', '+(journal.strip() + ' (' + str(yyyy) + ')').strip()
 
 def flatten(list, sep=' '):
     text = ''
@@ -49,11 +50,10 @@ def author_list(row):
 def arXiv(row):
     ident = clean(row['eprint'])
     if ident == '' : return ''
-    # return 'arXiv:'+clean(ident)
     return '[arXiv:'+ident+'](http://arxiv.org/abs/'+ident+')'
 
 
-def authors(row, max=10, etal=3):
+def authors(row, max=99, etal=4):
     al = author_list(row)
     if len(al) <= max:
         return flatten(al,', ')
@@ -87,12 +87,11 @@ header = '---\nusemathjax: true\nlayout: publication\n'
 for index, row in df.iterrows():
     fname = file_name(row)
     text = header+'title: '+clean(row['title']) + '\n---\n\n'
-    # text = '# '+clean(row['title']) + '\n\n'
-    text += reference(row)+'\n\n'
+    text += reference(row,4)+'\n\n'
     text += doi(row)+'\n\n'
     text += arXiv(row)+'\n\n'
-    text += '_'+authors(row,10)+ '_\n\n\n'
     text += str(row['abstract'])+'\n\n'
+    text += " * "+reference(row)+'\n'
     print(fname)
     file  = open("./out/"+fname, "w+")
     file.write(text)
